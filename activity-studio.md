@@ -48,18 +48,33 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 
 > **NON-NEGOTIABLE:** You MUST use the user's existing, authenticated browser session. **NEVER launch a new/isolated browser instance.** Users are already logged into CMX1 — launching a fresh browser loses their session, cookies, and authentication. This is a hard requirement, not a suggestion.
 
-### 🏆 Method 1: Chrome MCP Tools (PREFERRED — Use This First)
+### When to Use What
 
-> **This is the PRIMARY automation method.** The Chrome MCP extension (`mcp__Control_Chrome` and `mcp__Claude_in_Chrome`) connects directly to the user's real Chrome browser with all cookies, sessions, and login state intact. **No CDP setup required. No Playwright required. Just works.**
+| Task | Use | Why |
+|------|-----|-----|
+| **Initial exploration** — figuring out the UI, finding selectors, understanding layout | Chrome MCP | Quick screenshots, read page, natural language find |
+| **Login / authentication** — helping user get logged in | Chrome MCP | Already connected, can navigate to login URL |
+| **Actual form building** — adding questions, configuring answers, setting compliance | **Playwright CDP** | 10x faster, uses `data-cy` selectors directly, no screenshots needed, saves massive tokens |
+| **Bulk operations** — adding 10+ observations, configuring entire sections | **Playwright CDP** | Can loop through items programmatically in milliseconds |
+| **One-off checks** — "what does this page look like?" | Chrome MCP | Quick screenshot without script overhead |
+| **Reusable scripts** — automation that runs again on other templates | **Playwright CDP** | Scripts are `.mjs` files that can be shared and re-run |
 
-**Why this is preferred:**
-- ✅ Already connected to user's real browser — zero setup
-- ✅ Full access to authenticated sessions, cookies, saved profiles
-- ✅ Can navigate, click, fill forms, read pages, take screenshots
-- ✅ Works with whatever Chrome profile the user is using
-- ✅ No port conflicts, no flag requirements, no restart needed
-- ❌ Playwright `chromium.launch()` opens an empty isolated browser — **completely useless**
-- ❌ Playwright CDP requires Chrome restart with `--remote-debugging-port=9222` — fragile setup
+### Chrome MCP Tools (For Exploration & Setup)
+
+> The Chrome MCP extension (`mcp__Control_Chrome` and `mcp__Claude_in_Chrome`) connects directly to the user's real Chrome browser with all cookies, sessions, and login state intact. **No CDP setup required. Just works.** Best for exploring the UI, taking screenshots, and helping with login.
+
+**Strengths:**
+- ✅ Zero setup — already connected to user's real browser
+- ✅ Great for exploration, navigation, and login assistance
+- ✅ Natural language element finding
+
+**Weaknesses:**
+- ❌ Every action requires a screenshot → vision interpretation → coordinate click cycle
+- ❌ Burns tons of tokens on screenshot images
+- ❌ Slow — screenshot + AI interpretation per step
+- ❌ Coordinate-based clicking can miss targets
+- ❌ Not reusable — each session is manual
+- ❌ No `waitForSelector` — can't reliably wait for DOM changes
 
 **Available Chrome MCP Tools:**
 
@@ -77,28 +92,21 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 | `mcp__Claude_in_Chrome__navigate` | Navigate to URL or go back/forward |
 | `mcp__Claude_in_Chrome__get_page_text` | Extract raw text content from page |
 
-**Workflow Pattern:**
+### 🏆 Playwright CDP (For Actual Form Building — PREFERRED for Speed & Tokens)
 
-```
-1. mcp__Control_Chrome__list_tabs → Find the CMX1 tab (look for cmx1.com URL)
-2. mcp__Claude_in_Chrome__tabs_context_mcp → Get tab group context
-3. mcp__Claude_in_Chrome__computer (screenshot) → See current state
-4. mcp__Claude_in_Chrome__read_page or find → Locate elements
-5. mcp__Claude_in_Chrome__computer (left_click) → Click elements
-6. mcp__Claude_in_Chrome__form_input → Fill form fields
-7. Repeat 3-6 as needed
-```
+> **This is the PREFERRED method for building forms.** Playwright uses direct DOM selectors (`[data-cy="..."]`) — no screenshots, no vision model, no coordinate guessing. Each action is a single line of code that executes in milliseconds and costs almost zero tokens.
 
-**First Steps — Before Any Automation:**
+**Strengths:**
+- ✅ Direct selector-based interactions — `page.locator('[data-cy="add-section-button"]').click()`
+- ✅ Saves massive tokens — no screenshot images to process
+- ✅ 10x faster — no screenshot → interpret → click cycle
+- ✅ Precise — selectors hit exact elements, no coordinate guessing
+- ✅ `waitForSelector` — reliably waits for DOM changes before proceeding
+- ✅ Batch operations — loop through 20 observations in seconds
+- ✅ Reusable — scripts are `.mjs` files that can run again on other templates
+- ✅ All CMX1 elements have `data-cy` attributes — built for this
 
-1. **List tabs** to find the CMX1 tab: `mcp__Control_Chrome__list_tabs`
-2. **If CMX1 is not open:** Navigate to it: `mcp__Control_Chrome__open_url` with the template URL
-3. **If user is not logged in:** Tell them to log in manually — NEVER enter credentials
-4. **Take a screenshot** to see current state and orient yourself
-
-### Method 2: Playwright CDP (Secondary — For Scripted Automation Only)
-
-> Use this ONLY when writing reusable `.mjs` automation scripts that need to run independently. For interactive building work, **always use Method 1 (Chrome MCP)**.
+**Requirement:** Must connect to user's existing browser via CDP (see setup below). **NEVER use `chromium.launch()`.**
 
 **Prerequisites — Ask the User:**
 
@@ -616,9 +624,10 @@ CMX1 uses **AWS Cognito SSO** for authentication. When the user isn't logged in,
 
 ### ✅ How to Automate
 
-5. **Use Chrome MCP first** — `mcp__Control_Chrome` and `mcp__Claude_in_Chrome` tools connect directly to the user's real browser. No setup, no CDP flag, no restart. This is the default method.
-6. **Playwright CDP is for scripts only** — Only use Playwright `connectOverCDP()` when writing `.mjs` scripts that need to run independently of Claude. Always use Chrome MCP for interactive building.
+5. **Chrome MCP for exploration & login** — `mcp__Control_Chrome` and `mcp__Claude_in_Chrome` tools connect directly to the user's real browser. No setup needed. Use for navigating, exploring UI, helping with login, and one-off checks.
+6. **Playwright CDP for actual building** — Once CDP is set up, use Playwright for all form building work. Direct DOM selectors are 10x faster, save massive tokens (no screenshots), and produce reusable `.mjs` scripts.
 7. **Ask about browser first** — Before any Playwright CDP work, ask the user which browser (Chrome/Edge/Brave) and which profile they use.
+8. **Ideal workflow:** Chrome MCP to explore → set up CDP → Playwright scripts for the heavy lifting.
 
 ### 🔧 UI Interaction Notes
 
