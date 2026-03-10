@@ -44,82 +44,97 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 
 ---
 
-## ⚠️ Browser Automation Setup — MANDATORY FIRST STEP
+## ⚠️ Browser Automation — MANDATORY RULES
 
-> **NON-NEGOTIABLE:** Before running ANY Playwright automation against CMX1, you MUST connect to the user's existing browser session. **NEVER launch a new browser instance.** Users are already logged into CMX1 — launching a fresh browser loses their session, cookies, and authentication. This is a hard requirement, not a suggestion.
+> **NON-NEGOTIABLE:** You MUST use the user's existing, authenticated browser session. **NEVER launch a new/isolated browser instance.** Users are already logged into CMX1 — launching a fresh browser loses their session, cookies, and authentication. This is a hard requirement, not a suggestion.
 
-### Step 1: Ask the User — Browser & Profile
+### 🏆 Method 1: Chrome MCP Tools (PREFERRED — Use This First)
 
-**You MUST ask the user these questions before any automation work begins:**
+> **This is the PRIMARY automation method.** The Chrome MCP extension (`mcp__Control_Chrome` and `mcp__Claude_in_Chrome`) connects directly to the user's real Chrome browser with all cookies, sessions, and login state intact. **No CDP setup required. No Playwright required. Just works.**
 
-1. **Which browser are you using?**
-   - **Google Chrome** (recommended — best CDP support)
-   - **Microsoft Edge** (Chromium-based, full CDP support)
-   - **Brave** (Chromium-based, CDP supported)
-   - **Safari** ⚠️ (limited — no CDP support for existing sessions; Playwright can only launch a fresh WebKit instance)
-   - **Firefox** ⚠️ (limited — remote debugging exists but Playwright CDP connection is Chromium-only)
+**Why this is preferred:**
+- ✅ Already connected to user's real browser — zero setup
+- ✅ Full access to authenticated sessions, cookies, saved profiles
+- ✅ Can navigate, click, fill forms, read pages, take screenshots
+- ✅ Works with whatever Chrome profile the user is using
+- ✅ No port conflicts, no flag requirements, no restart needed
+- ❌ Playwright `chromium.launch()` opens an empty isolated browser — **completely useless**
+- ❌ Playwright CDP requires Chrome restart with `--remote-debugging-port=9222` — fragile setup
 
-2. **Which browser profile are you using?** (e.g., "Default", "Work", "Personal", a named profile)
-   - Chrome profiles each run as separate processes — the CDP port attaches to the specific profile's process
-   - If they don't know, it's likely "Default" or "Profile 1"
+**Available Chrome MCP Tools:**
 
-3. **Is CMX1 already open in that browser?**
-   - They must be logged in and have the Activity Studio open (or at least be on the CMX1 site)
+| Tool | Purpose |
+|------|---------|
+| `mcp__Control_Chrome__list_tabs` | List all open tabs — find the CMX1 tab |
+| `mcp__Control_Chrome__open_url` | Navigate to a URL (opens in tab) |
+| `mcp__Control_Chrome__get_page_content` | Get text content of current page |
+| `mcp__Control_Chrome__execute_javascript` | Run JS in the page context |
+| `mcp__Control_Chrome__switch_to_tab` | Switch to a specific tab by ID |
+| `mcp__Claude_in_Chrome__read_page` | Get accessibility tree of the page (elements, roles, refs) |
+| `mcp__Claude_in_Chrome__find` | Find elements by natural language (e.g., "save button", "section named Receiving") |
+| `mcp__Claude_in_Chrome__computer` | Mouse clicks, keyboard input, screenshots, scrolling |
+| `mcp__Claude_in_Chrome__form_input` | Fill form inputs by element ref |
+| `mcp__Claude_in_Chrome__navigate` | Navigate to URL or go back/forward |
+| `mcp__Claude_in_Chrome__get_page_text` | Extract raw text content from page |
 
-> **If the user picks Safari or Firefox:** Inform them that connecting to an existing browser session is only supported for Chromium-based browsers (Chrome, Edge, Brave). Recommend they open CMX1 in Chrome or Edge for automation. Do NOT proceed with `chromium.launch()` as a workaround — that defeats the entire purpose.
+**Workflow Pattern:**
 
-### Step 2: Enable Remote Debugging (One-Time Setup)
-
-The user must restart their browser with the Chrome DevTools Protocol (CDP) remote debugging port enabled. This is a one-time setup per session.
-
-**macOS — Google Chrome:**
-```bash
-# Quit Chrome completely first, then relaunch with CDP enabled:
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+```
+1. mcp__Control_Chrome__list_tabs → Find the CMX1 tab (look for cmx1.com URL)
+2. mcp__Claude_in_Chrome__tabs_context_mcp → Get tab group context
+3. mcp__Claude_in_Chrome__computer (screenshot) → See current state
+4. mcp__Claude_in_Chrome__read_page or find → Locate elements
+5. mcp__Claude_in_Chrome__computer (left_click) → Click elements
+6. mcp__Claude_in_Chrome__form_input → Fill form fields
+7. Repeat 3-6 as needed
 ```
 
-**macOS — Google Chrome (specific profile):**
+**First Steps — Before Any Automation:**
+
+1. **List tabs** to find the CMX1 tab: `mcp__Control_Chrome__list_tabs`
+2. **If CMX1 is not open:** Navigate to it: `mcp__Control_Chrome__open_url` with the template URL
+3. **If user is not logged in:** Tell them to log in manually — NEVER enter credentials
+4. **Take a screenshot** to see current state and orient yourself
+
+### Method 2: Playwright CDP (Secondary — For Scripted Automation Only)
+
+> Use this ONLY when writing reusable `.mjs` automation scripts that need to run independently. For interactive building work, **always use Method 1 (Chrome MCP)**.
+
+**Prerequisites — Ask the User:**
+
+1. **Which browser?** (Chrome recommended, Edge, Brave work too. Safari/Firefox ⚠️ not supported for CDP.)
+2. **Which profile?** (e.g., "Default", "Work", "Personal")
+3. **Is CMX1 already open?** (must be logged in)
+
+**Setup — User Must Restart Browser with CDP Flag:**
+
 ```bash
-# Use --profile-directory to target a specific Chrome profile:
+# macOS — Google Chrome:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+
+# macOS — Specific profile:
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
   --remote-debugging-port=9222 \
   --profile-directory="Profile 1"
-```
 
-**macOS — Microsoft Edge:**
-```bash
+# macOS — Microsoft Edge:
 /Applications/Microsoft\ Edge.app/Contents/MacOS/Microsoft\ Edge --remote-debugging-port=9222
-```
 
-**macOS — Brave:**
-```bash
+# macOS — Brave:
 /Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser --remote-debugging-port=9222
-```
 
-**Windows — Google Chrome:**
-```cmd
+# Windows — Google Chrome:
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
-```
 
-**Linux — Google Chrome:**
-```bash
+# Linux:
 google-chrome --remote-debugging-port=9222
 ```
 
-> **Important:** Chrome must be FULLY quit before relaunching with the flag. If any Chrome window is still open, the new instance will join the existing process (which doesn't have CDP enabled) and the flag will be ignored.
+> **Important:** Chrome must be FULLY quit before relaunching with the flag. If any Chrome window is still open, the new instance joins the existing process (without CDP) and the flag is ignored.
 
-### Step 3: Verify CDP is Active
+**Verify CDP:** `curl -s http://localhost:9222/json/version`
 
-Before running any script, verify the CDP endpoint is responding:
-```bash
-curl -s http://localhost:9222/json/version
-```
-
-This should return JSON with browser info. If it returns nothing or errors, Chrome wasn't launched with the flag.
-
-### Step 4: Connect Playwright to Existing Browser
-
-**ALWAYS use `connectOverCDP` — NEVER use `chromium.launch()`:**
+**Connect Playwright:**
 
 ```javascript
 import { chromium } from 'playwright';
@@ -127,28 +142,13 @@ import { chromium } from 'playwright';
 // ✅ CORRECT — connects to user's existing browser session
 const browser = await chromium.connectOverCDP('http://localhost:9222');
 const contexts = browser.contexts();
-const context = contexts[0]; // Use the existing browser context (has cookies, session)
-const pages = context.pages();
-// Find the CMX1 tab, or use pages[0]
-const page = pages.find(p => p.url().includes('cmx1.com')) || pages[0];
+const page = contexts[0].pages().find(p => p.url().includes('cmx1.com')) || contexts[0].pages()[0];
 
 // ❌ NEVER DO THIS — launches an empty browser with no session
 // const browser = await chromium.launch({ headless: false });
 ```
 
-### Helper Script: Check Browser Readiness
-
-```bash
-# Quick check — is CDP available?
-if curl -s http://localhost:9222/json/version > /dev/null 2>&1; then
-  echo "✅ CDP is active — ready for Playwright automation"
-  curl -s http://localhost:9222/json/version | python3 -m json.tool
-else
-  echo "❌ CDP not available — Chrome needs to be restarted with --remote-debugging-port=9222"
-fi
-```
-
-### Troubleshooting
+### Troubleshooting (Playwright CDP Only)
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
@@ -156,7 +156,7 @@ fi
 | "Target closed" errors | User closed the tab Playwright was connected to | Re-find the page from `context.pages()` |
 | Wrong profile | CDP connects to whichever Chrome process has the port | Use `--profile-directory` flag when launching |
 | Multiple Chrome instances | Only one process can bind to port 9222 | Ensure all Chrome instances are quit before relaunching |
-| "Browser closed" after connecting | Chrome crashed or was manually closed | User needs to reopen Chrome with CDP flag |
+| Chrome keeps relaunching | Agent keeps killing/relaunching Chrome in a loop | **STOP.** Use Method 1 (Chrome MCP) instead — it just works |
 
 ---
 
@@ -578,14 +578,54 @@ To work with an existing template:
 
 ## Important Notes for Automation
 
-1. **🚫 NEVER launch a new browser** — Always use `chromium.connectOverCDP()` to connect to the user's existing Chrome session. See the **Browser Automation Setup** section above. This is non-negotiable.
-2. **🚫 NEVER call `chromium.launch()`** — This creates an isolated browser with no cookies, no session, no login. Completely useless for CMX1 automation.
-3. **🚫 NEVER call `browser.close()` to close the user's browser** — In CDP mode, `browser.close()` disconnects Playwright without closing Chrome. This is the correct behavior. But never attempt to close or terminate the user's browser process.
-4. **Ask about browser first** — Before any automation, ask the user which browser (Chrome/Edge/Brave) and which profile they use. Set up CDP connection accordingly.
-5. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel
-6. **Side panel only for**: Visibility conditions (Logic tab), and per-answer-item detail via gear icons
-7. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection
-8. **Risk levels are org-configured**: The available risk levels vary by organization. Use the combobox to search/type
-9. **data-cy attributes**: Always prefer `[data-cy="..."]` selectors — they are stable test IDs
-10. **UUIDs are dynamic**: Answer row UUIDs change per question instance. Use relative selectors within grid rows
-11. **Auto-save**: Changes are auto-saved (status bar shows "Changes saved on..." with timestamp)
+### 🚫 Hard Rules — Non-Negotiable
+
+1. **🚫 NEVER launch a new/isolated browser** — No `chromium.launch()`, no Playwright Chromium, no "Chrome for Testing" windows. These create empty browsers with no cookies, no session, no login. **Completely useless for CMX1.**
+2. **🚫 NEVER call `browser.close()` on the user's browser** — In CDP mode, `browser.close()` disconnects Playwright without closing Chrome (correct). But never attempt to close, kill, or terminate the user's browser process.
+3. **🚫 NEVER repeatedly kill/relaunch Chrome** — If CDP isn't working, switch to Chrome MCP tools (Method 1). Don't loop killing and relaunching Chrome trying to get CDP to bind.
+
+### 🔐 Authentication & Login
+
+CMX1 uses **AWS Cognito SSO** for authentication. When the user isn't logged in, the automation needs to handle login. There are **two approaches** — ask the user which they prefer:
+
+**Option A: User logs in manually (default)**
+- Navigate to the CMX1 URL — the browser will redirect to the Cognito login page
+- Tell the user: "Please log in. I'll continue once I detect you're in Activity Studio."
+- Poll/wait for the Activity Studio page to load (look for `[data-cy^="section-item"]` or the Activity Studio URL pattern)
+
+**Option B: User provides credentials for automation**
+- Ask the user for their **CMX1 email** and **password**
+- The automation fills the Cognito login form fields and clicks Sign In
+- Handle any MFA/2FA prompts by asking the user for the code
+- **Security notes:**
+  - Never store credentials in script files, logs, or build specs
+  - Credentials should only be used in-session and never persisted
+  - If the login page changes (e.g., CAPTCHA, new SSO provider), fall back to Option A
+
+**Cognito Login Flow (for Option B):**
+```
+1. Navigate to CMX1 URL → redirects to Cognito login page
+2. Find email/username input → fill with user-provided email
+3. Find password input → fill with user-provided password
+4. Click "Sign In" button
+5. If MFA prompt appears → ask user for code → fill and submit
+6. Wait for Activity Studio to load
+```
+
+> **Ask during setup:** "Would you like to log in manually, or should I handle the login for you? If I handle it, I'll need your CMX1 email and password (I won't store them anywhere)."
+
+### ✅ How to Automate
+
+5. **Use Chrome MCP first** — `mcp__Control_Chrome` and `mcp__Claude_in_Chrome` tools connect directly to the user's real browser. No setup, no CDP flag, no restart. This is the default method.
+6. **Playwright CDP is for scripts only** — Only use Playwright `connectOverCDP()` when writing `.mjs` scripts that need to run independently of Claude. Always use Chrome MCP for interactive building.
+7. **Ask about browser first** — Before any Playwright CDP work, ask the user which browser (Chrome/Edge/Brave) and which profile they use.
+
+### 🔧 UI Interaction Notes
+
+8. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel
+9. **Side panel only for**: Visibility conditions (Logic tab), and per-answer-item detail via gear icons
+10. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection
+11. **Risk levels are org-configured**: The available risk levels vary by organization. Use the combobox to search/type
+12. **data-cy attributes**: Always prefer `[data-cy="..."]` selectors — they are stable test IDs
+13. **UUIDs are dynamic**: Answer row UUIDs change per question instance. Use relative selectors within grid rows
+14. **Auto-save**: Changes are auto-saved (status bar shows "Changes saved on..." with timestamp)
