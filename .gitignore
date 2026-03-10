@@ -1,0 +1,3 @@
+builds/
+playwright/node_modules/
+playwright/package*.json
