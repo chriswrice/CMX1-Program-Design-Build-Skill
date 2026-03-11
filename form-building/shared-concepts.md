@@ -14,6 +14,52 @@ This file documents concepts and components that apply **universally across all 
 
 ---
 
+## Required / Optional / N/A / N/O (Question-Level Settings)
+
+Every question has a **Required** checkbox and two supplemental toggles (**N/A** and **N/O**) that control whether end-users must answer the question when filling out the form. These appear in the right side panel under the question text area, below the Question Type dropdown.
+
+### Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Required** | ✅ ON | End-user **must** answer this question to submit the form. Indicated by a red asterisk (*) next to the label. |
+| **N/A** (Not Applicable) | ☐ OFF | When enabled, adds an "N/A" option the end-user can select to skip the question. Useful when a question doesn't apply to every situation (e.g., "Freezer temperature" when a location has no freezer). |
+| **N/O** (Not Observed) | ☐ OFF | When enabled, adds an "N/O" option the end-user can select when they couldn't observe/verify the item. Useful for inspection items that may not be visible or accessible at the time of audit. |
+
+### DOM Selectors
+
+| Element | Selector |
+|---------|----------|
+| Required checkbox | `[data-cy="required-checkbox"]` |
+| N/A checkbox | `[data-cy="na-checkbox"]` |
+| N/O checkbox | `[data-cy="no-checkbox"]` |
+
+### When to Make Questions Optional (Required OFF)
+
+- **Data-only / informational questions** — photos, comments, or text fields that capture supplemental info but aren't critical to the assessment
+- **"Nice to have" fields** — e.g., "Additional notes", "Vendor contact name"
+- **Conditional context** — questions that only sometimes apply but aren't covered by visibility rules (consider using N/A instead of making optional)
+
+### When to Keep Questions Required (Required ON — Default)
+
+- **Scored/compliance questions** — any question with points, compliance status, or risk levels should be required so scoring is accurate
+- **Core inspection items** — the reason the form exists; skipping them defeats the purpose
+- **Corrective action triggers** — if a question can trigger a CA, it needs an answer
+
+> **Rule of thumb:** For compliance audits, keep everything required by default. Only make questions optional when the user explicitly identifies them as supplemental or informational. For simple checklists, ask the user if all questions should be required or if some are optional.
+
+### N/A vs. N/O vs. Optional
+
+| Approach | Use When | End-User Experience |
+|----------|----------|-------------------|
+| **Required OFF** (optional) | The field is truly supplemental — no one cares if it's blank | Question shows no asterisk, user can skip it entirely |
+| **N/A enabled** | The question is important but doesn't always apply | User must actively choose "N/A" — this is tracked and visible in reports |
+| **N/O enabled** | The item should be checked but sometimes can't be | User must actively choose "N/O" — flags the item as unverifiable for follow-up |
+
+> **Key difference:** Making a question optional means a blank answer is silently accepted. Enabling N/A or N/O forces the end-user to **explicitly acknowledge** why they're not answering — which is much better for audit trails and compliance reporting.
+
+---
+
 ## Evaluation Settings (Right Panel → ANSWER section)
 
 These toggle switches appear in the right panel when a question is selected. They control what scoring/tracking columns appear in the answer table.
@@ -27,6 +73,22 @@ These toggle switches appear in the right panel when a question is selected. The
 | Immediate Action | OFF | Nested under Corrective Actions (see below) |
 
 > **Immediate Action** is a special evaluation mode for **critical situations that must be corrected on the spot** — e.g., an employee working sick (recommendation: immediately send home), a safety hazard that can't wait for a standard corrective action workflow. When enabled, the end-user filling out the form sees an Immediate Corrective Action prompt that can be set as Optional or Required. This is separate from the standard Corrective Actions (which have a timeline like 7 Business Days).
+
+### Scored vs. Data-Only Questions
+
+**Not every question needs evaluation settings.** Questions that purely collect information — text fields, dates, photos, dropdowns for data capture — should have **all four evaluation toggles turned OFF** (Points, Compliance, Risk, Corrective Actions). Leaving them on creates empty scoring columns, inflates point totals, and confuses the answer table.
+
+| Question Purpose | Points | Compliance | Risk | CAs | Examples |
+|-----------------|--------|------------|------|-----|----------|
+| **Scored / compliance** | ON | ON | ON | ON (on fail answers) | "Are all proteins at 41°F or below?", "Is the area clean?" |
+| **Data-only / informational** | **OFF** | **OFF** | **OFF** | **OFF** | "Invoice Number", "Vendor Name", "Date of service", "Photo of delivery log", "Manager on duty" |
+
+**How to identify data-only questions:**
+- The answer doesn't have a "right" or "wrong" value — it's capturing a fact, not evaluating compliance
+- There's no pass/fail concept — any answer is equally valid
+- Common types: Text, Date/DateTime, Photo/Attachment, Signature, Numeric fields collecting measurements (not thresholds), Dropdowns used for categorization (not evaluation)
+
+**Builder agent rule:** When the build spec shows `—` in the Pass/Fail/CA columns (or the Eval column says `OFF`), the agent **must** turn off all four evaluation toggles for that question. Do not leave them at their defaults.
 
 ---
 
