@@ -14,4 +14,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - Unique settings compared to other types
 > - Scoring and compliance mapping for dropdown selections
 > - Example configurations
-> - Playwright automation workflows
+> - Automation workflows

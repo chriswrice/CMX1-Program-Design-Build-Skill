@@ -17,4 +17,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - How to access these types (not in the grid — must use Question Type dropdown)
 > - Whether these types support scoring/compliance
 > - Example configurations
-> - Playwright automation workflows
+> - Automation workflows

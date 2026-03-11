@@ -52,16 +52,16 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 
 | Task | Use | Why |
 |------|-----|-----|
-| **Initial exploration** — figuring out the UI, finding selectors, understanding layout | Chrome MCP | Quick screenshots, read page, natural language find |
-| **Login / authentication** — helping user get logged in | Chrome MCP | Already connected, can navigate to login URL |
-| **Actual form building** — adding questions, configuring answers, setting compliance | **Playwright CDP** | 10x faster, uses `data-cy` selectors directly, no screenshots needed, saves massive tokens |
-| **Bulk operations** — adding 10+ observations, configuring entire sections | **Playwright CDP** | Can loop through items programmatically in milliseconds |
-| **One-off checks** — "what does this page look like?" | Chrome MCP | Quick screenshot without script overhead |
-| **Reusable scripts** — automation that runs again on other templates | **Playwright CDP** | Scripts are `.mjs` files that can be shared and re-run |
+| **Initial exploration** — figuring out the UI, finding selectors, understanding layout | Claude in Chrome | Quick screenshots, read page, natural language find |
+| **Login / authentication** — helping user get logged in | Claude in Chrome | Already connected, can navigate to login URL |
+| **Actual form building** — adding questions, configuring answers, setting compliance | **CDP Scripts** | 10x faster, uses `data-cy` selectors directly, no screenshots needed, saves massive tokens |
+| **Bulk operations** — adding 10+ observations, configuring entire sections | **CDP Scripts** | Can loop through items programmatically in milliseconds |
+| **One-off checks** — "what does this page look like?" | Claude in Chrome | Quick screenshot without script overhead |
+| **Reusable scripts** — automation that runs again on other templates | **CDP Scripts** | Scripts are `.mjs` files that can be shared and re-run |
 
-### Chrome MCP Tools (For Exploration & Setup)
+### Claude in Chrome (For Exploration & Setup)
 
-> The Chrome MCP extension (`mcp__Control_Chrome` and `mcp__Claude_in_Chrome`) connects directly to the user's real Chrome browser with all cookies, sessions, and login state intact. **No CDP setup required. Just works.** Best for exploring the UI, taking screenshots, and helping with login.
+> Claude in Chrome (`mcp__Claude_in_Chrome`) connects directly to the user's real Chrome browser with all cookies, sessions, and login state intact. **No CDP setup required. Just works.** Best for exploring the UI, taking screenshots, and helping with login.
 
 **Strengths:**
 - ✅ Zero setup — already connected to user's real browser
@@ -76,25 +76,24 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 - ❌ Not reusable — each session is manual
 - ❌ No `waitForSelector` — can't reliably wait for DOM changes
 
-**Available Chrome MCP Tools:**
+**Available Claude in Chrome Tools:**
 
 | Tool | Purpose |
 |------|---------|
-| `mcp__Control_Chrome__list_tabs` | List all open tabs — find the CMX1 tab |
-| `mcp__Control_Chrome__open_url` | Navigate to a URL (opens in tab) |
-| `mcp__Control_Chrome__get_page_content` | Get text content of current page |
-| `mcp__Control_Chrome__execute_javascript` | Run JS in the page context |
-| `mcp__Control_Chrome__switch_to_tab` | Switch to a specific tab by ID |
+| `mcp__Claude_in_Chrome__tabs_context_mcp` | Get tab group context — must call first |
 | `mcp__Claude_in_Chrome__read_page` | Get accessibility tree of the page (elements, roles, refs) |
 | `mcp__Claude_in_Chrome__find` | Find elements by natural language (e.g., "save button", "section named Receiving") |
 | `mcp__Claude_in_Chrome__computer` | Mouse clicks, keyboard input, screenshots, scrolling |
 | `mcp__Claude_in_Chrome__form_input` | Fill form inputs by element ref |
 | `mcp__Claude_in_Chrome__navigate` | Navigate to URL or go back/forward |
 | `mcp__Claude_in_Chrome__get_page_text` | Extract raw text content from page |
+| `mcp__Claude_in_Chrome__javascript_tool` | Run JS in the page context |
+| `mcp__Claude_in_Chrome__read_console_messages` | Read browser console output |
+| `mcp__Claude_in_Chrome__read_network_requests` | Monitor network requests |
 
-### 🏆 Playwright CDP (For Actual Form Building — PREFERRED for Speed & Tokens)
+### 🏆 CDP Scripts (For Bulk Form Building — PREFERRED for Speed & Tokens)
 
-> **This is the PREFERRED method for building forms.** Playwright uses direct DOM selectors (`[data-cy="..."]`) — no screenshots, no vision model, no coordinate guessing. Each action is a single line of code that executes in milliseconds and costs almost zero tokens.
+> **This is the PREFERRED method for building forms.** CDP scripts use the Playwright library to connect to the user's browser via Chrome DevTools Protocol and use direct DOM selectors (`[data-cy="..."]`) — no screenshots, no vision model, no coordinate guessing. Each action is a single line of code that executes in milliseconds and costs almost zero tokens. These are standalone `.mjs` Node scripts, not MCP tools.
 
 **Strengths:**
 - ✅ Direct selector-based interactions — `page.locator('[data-cy="add-section-button"]').click()`
@@ -164,7 +163,7 @@ const page = contexts[0].pages().find(p => p.url().includes('cmx1.com')) || cont
 | "Target closed" errors | User closed the tab Playwright was connected to | Re-find the page from `context.pages()` |
 | Wrong profile | CDP connects to whichever Chrome process has the port | Use `--profile-directory` flag when launching |
 | Multiple Chrome instances | Only one process can bind to port 9222 | Ensure all Chrome instances are quit before relaunching |
-| Chrome keeps relaunching | Agent keeps killing/relaunching Chrome in a loop | **STOP.** Use Method 1 (Chrome MCP) instead — it just works |
+| Chrome keeps relaunching | Agent keeps killing/relaunching Chrome in a loop | **STOP.** Use Claude in Chrome instead — it just works |
 
 ---
 
@@ -590,44 +589,57 @@ To work with an existing template:
 
 1. **🚫 NEVER launch a new/isolated browser** — No `chromium.launch()`, no Playwright Chromium, no "Chrome for Testing" windows. These create empty browsers with no cookies, no session, no login. **Completely useless for CMX1.**
 2. **🚫 NEVER call `browser.close()` on the user's browser** — In CDP mode, `browser.close()` disconnects Playwright without closing Chrome (correct). But never attempt to close, kill, or terminate the user's browser process.
-3. **🚫 NEVER repeatedly kill/relaunch Chrome** — If CDP isn't working, switch to Chrome MCP tools (Method 1). Don't loop killing and relaunching Chrome trying to get CDP to bind.
+3. **🚫 NEVER repeatedly kill/relaunch Chrome** — If CDP isn't working, switch to Claude in Chrome tools. Don't loop killing and relaunching Chrome trying to get CDP to bind.
 
 ### 🔐 Authentication & Login
 
-CMX1 uses **AWS Cognito SSO** for authentication. When the user isn't logged in, the automation needs to handle login. There are **two approaches** — ask the user which they prefer:
+CMX1 login redirects to a branded login page ("Sign in to X1 Platform"). There are **three approaches** — ask the user which they prefer:
 
 **Option A: User logs in manually (default)**
-- Navigate to the CMX1 URL — the browser will redirect to the Cognito login page
+- Navigate to the CMX1 URL — the browser will redirect to the login page
 - Tell the user: "Please log in. I'll continue once I detect you're in Activity Studio."
 - Poll/wait for the Activity Studio page to load (look for `[data-cy^="section-item"]` or the Activity Studio URL pattern)
 
-**Option B: User provides credentials for automation**
+**Option B: Google SSO (recommended for automation)**
+- Click the **"Continue with Google"** button on the login page
+- The browser redirects to Google's OAuth flow
+- If the user is already signed into Google in their browser, it may auto-select the account or show an account picker
+- If multiple Google accounts are signed in, the user may need to select the correct one
+- After Google auth completes, the browser redirects back to CMX1 authenticated
+- **Login page selectors:**
+  - Username/email input: `input[placeholder="Enter username, or email..."]`
+  - Continue button: Button with text "Continue"
+  - Google SSO button: Button with text "Continue with Google" (has Google "G" logo)
+- **Best for automation:** No credentials needed — leverages the user's existing Google session
+
+**Option C: User provides credentials for automation**
 - Ask the user for their **CMX1 email** and **password**
-- The automation fills the Cognito login form fields and clicks Sign In
+- Fill the email input, click Continue, then fill the password field and submit
 - Handle any MFA/2FA prompts by asking the user for the code
 - **Security notes:**
   - Never store credentials in script files, logs, or build specs
   - Credentials should only be used in-session and never persisted
-  - If the login page changes (e.g., CAPTCHA, new SSO provider), fall back to Option A
+  - If the login page changes (e.g., CAPTCHA), fall back to Option A
 
-**Cognito Login Flow (for Option B):**
+**Login Flow (for Option C):**
 ```
-1. Navigate to CMX1 URL → redirects to Cognito login page
+1. Navigate to CMX1 URL → redirects to login page
 2. Find email/username input → fill with user-provided email
-3. Find password input → fill with user-provided password
-4. Click "Sign In" button
-5. If MFA prompt appears → ask user for code → fill and submit
-6. Wait for Activity Studio to load
+3. Click "Continue" button
+4. Find password input → fill with user-provided password
+5. Click "Sign In" / submit button
+6. If MFA prompt appears → ask user for code → fill and submit
+7. Wait for Activity Studio to load
 ```
 
-> **Ask during setup:** "Would you like to log in manually, or should I handle the login for you? If I handle it, I'll need your CMX1 email and password (I won't store them anywhere)."
+> **Ask during setup:** "Would you like to log in manually, use Google SSO (recommended), or should I handle the login with your email/password?"
 
 ### ✅ How to Automate
 
-5. **Chrome MCP for exploration & login** — `mcp__Control_Chrome` and `mcp__Claude_in_Chrome` tools connect directly to the user's real browser. No setup needed. Use for navigating, exploring UI, helping with login, and one-off checks.
-6. **Playwright CDP for actual building** — Once CDP is set up, use Playwright for all form building work. Direct DOM selectors are 10x faster, save massive tokens (no screenshots), and produce reusable `.mjs` scripts.
-7. **Ask about browser first** — Before any Playwright CDP work, ask the user which browser (Chrome/Edge/Brave) and which profile they use.
-8. **Ideal workflow:** Chrome MCP to explore → set up CDP → Playwright scripts for the heavy lifting.
+5. **Claude in Chrome for exploration & login** — `mcp__Claude_in_Chrome` tools connect directly to the user's real browser. No setup needed. Use for navigating, exploring UI, helping with login, and one-off checks.
+6. **CDP scripts for actual building** — Once CDP is set up, use CDP scripts for all form building work. Direct DOM selectors are 10x faster, save massive tokens (no screenshots), and produce reusable `.mjs` scripts.
+7. **Ask about browser first** — Before any CDP script work, ask the user which browser (Chrome/Edge/Brave) and which profile they use.
+8. **Ideal workflow:** Claude in Chrome to explore → set up CDP → CDP scripts for the heavy lifting.
 
 ### 🔧 UI Interaction Notes
 

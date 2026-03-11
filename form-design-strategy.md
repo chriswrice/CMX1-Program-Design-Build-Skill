@@ -10,16 +10,53 @@ This file covers the **research & planning phase** for building CMX1 activity te
 
 When a user asks to build a new form/template, follow this structured discovery process **before creating the template**. Each phase maps to real configuration in Activity Studio.
 
+### Pre-Phase: Environment Setup (One-Time Only)
+
+> **This only needs to happen once per machine.** If the user has already completed this setup in a previous session, skip straight to Phase 1. Ask the user if they've done this before — don't repeat it every time.
+
+Before building anything, confirm the tooling is ready:
+
+**1. Claude in Chrome Extension**
+- Is the Claude in Chrome MCP extension installed and connected?
+- Quick check: call `tabs_context_mcp` — if it returns tab IDs, you're good.
+- If not connected: guide the user to install the extension and click "Connect" in Chrome.
+
+**2. CDP (Chrome DevTools Protocol) for Playwright Scripts**
+- Is Chrome running with `--remote-debugging-port=9222`?
+- Quick check: run `curl -s http://localhost:9222/json/version` — if it returns JSON, you're good.
+- If not: the user needs to **fully quit Chrome** and relaunch with the flag:
+  ```bash
+  # macOS — Google Chrome:
+  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+  ```
+- See [`activity-studio.md`](activity-studio.md) for other browsers/platforms and troubleshooting.
+
+**3. Playwright Installed**
+- Quick check: run `node -e "require('playwright')"` — if no error, you're good.
+- If not: `npm install playwright` in the project directory.
+
+**4. CMX1 Logged In**
+- Is the user logged into their CMX1 site in the browser?
+- They need an active session before any automation can work.
+
+**Once all four are confirmed, note it and never ask again for this session.** Jump to Phase 1.
+
+---
+
 ### Phase 1: Template Identity & Purpose
 
-**Goal:** Understand what the template is for, who it's for, and its scope.
+**Goal:** Understand what the template is for, whether it's new or existing, and its scope.
+
+**Always ask these questions first:**
 
 | Question | Why It Matters | Maps To |
 |----------|---------------|---------|
+| Are you creating a **new activity** or **updating an existing** one? | Determines workflow: new = full wizard, existing = navigate to it and edit | Build workflow path |
+| What **site/environment** are you working on? (e.g., dev, staging, production, specific URL) | Need to know where to navigate | Browser target URL |
+| *(If existing)* Can you share the **link** to the activity template? | Direct navigation instead of searching | Browser navigation |
 | What is this template called? | Template name shown to end-users | Setup → Template Name |
 | What is its purpose? (1–2 sentences) | Description shown to end-users | Setup → Description |
-| What type of activity is this? (audit, inspection, checklist, survey) | Determines feature complexity | Influences all Setup toggles |
-| Is this a simple checklist or a full compliance audit? | Simple = fewer features needed | Setup → Evaluation Form checkboxes |
+| Is this a simple checklist or a full compliance audit? | Simple = just data capture, fewer features needed; Full = scoring, compliance tracking, risk levels, corrective actions | Setup → Evaluation Form checkboxes |
 
 **Defaults:** If the user doesn't specify, start with the template name and description, and assume a full-featured compliance form (scoring + compliance + risk all enabled).
 
@@ -37,7 +74,7 @@ When a user asks to build a new form/template, follow this structured discovery 
 | **Compliance** | "Do you need to track In/Out compliance?" | Regulatory audits, standards compliance | Internal surveys, data entry forms |
 | **Risk** | "Do you need risk level assessment per question?" | Safety inspections, food safety, compliance audits | Simple task checklists |
 
-> **Rule of thumb:** If the user says "audit" or "inspection," enable all three. If they say "checklist" or "survey," ask whether they need scoring — they may not.
+> **Rule of thumb:** If the user chose "full compliance audit" in Phase 1, enable all three. If they chose "simple checklist," ask whether they need scoring — they may not.
 
 #### Workflow Features
 
@@ -189,6 +226,22 @@ The builder agent reads `form-layout.md` for what to build and how to score, the
 - Serves as documentation of what was built and why
 
 > **Naming convention:** Use kebab-case for the folder name (e.g., `ccp-checklist`, `facility-safety-audit`, `daily-ops-checklist`)
+
+#### Presenting Build Specs to the User
+
+After generating the build spec files, **always present clickable file links** so the user can preview them directly in the Claude app without navigating to the folder manually.
+
+**Format to use:**
+
+```
+Build spec is ready for review:
+
+- [settings.md](cmx1/builds/{form-name}/settings.md)
+- [form-layout.md](cmx1/builds/{form-name}/form-layout.md)
+- [scoring-compliance.md](cmx1/builds/{form-name}/scoring-compliance.md)
+```
+
+Use **full absolute paths** in the links (e.g., `/Users/chrisrice/Documents/Business Stuff/vNext Agent Full Form Build/cmx1/builds/{form-name}/settings.md`) so they resolve correctly regardless of working directory. Present all three files together after they're all written, and ask the user to review before proceeding to build.
 
 ---
 
@@ -346,7 +399,11 @@ After the sub-agent completes, Opus takes over for quality assurance:
 Use this checklist when starting a new template project:
 
 ```
+□ New activity or updating existing?
+□ Site/environment (dev, staging, production, URL)
+□ Link to existing activity (if updating)
 □ Template name and description
+□ Simple checklist or full compliance audit?
 □ Template color (visual identifier)
 □ Evaluation features: Scoring? Compliance? Risk?
 □ Summary Report needed?

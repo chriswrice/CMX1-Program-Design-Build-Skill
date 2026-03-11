@@ -14,4 +14,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - How compliance/risk are determined with multiple selections
 > - Unique settings compared to single-select types
 > - Example configurations
-> - Playwright automation workflows
+> - Automation workflows

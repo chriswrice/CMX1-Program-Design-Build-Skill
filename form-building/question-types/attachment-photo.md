@@ -14,4 +14,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - How these differ from the footer photo/attachment controls on other question types
 > - Whether these types support scoring/compliance or are data-only
 > - Example configurations (e.g., "Upload safety certificate", "Photo of equipment label")
-> - Playwright automation workflows
+> - Automation workflows

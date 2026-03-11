@@ -325,7 +325,7 @@ Row colors update automatically based on Compliance setting:
 
 ---
 
-## Playwright Workflows
+## Automation Workflows
 
 ### Workflow: Create a Temperature Question
 
@@ -616,7 +616,7 @@ The Decimals dropdown controls how many decimal places are allowed in the temper
 
 > **DESTRUCTIVE GOTCHA:** Changing the Unit of Measurement **deletes condition rows** that have no value set. Switching from Fahrenheit to Celcius removed the first condition row (empty value). Switching to None removed ALL remaining condition rows. This deletion is **NOT undoable** via Ctrl+Z or the undo button. The condition rows must be manually recreated. **Always set condition values before changing units, or avoid changing units after conditions are configured.**
 
-### Playwright Workflow: Configure Multiple Inputs with Calculation
+### Automation Workflow: Configure Multiple Inputs with Calculation
 
 ```python
 # 1. Click temperature input to open Answer sub-panel
@@ -699,4 +699,4 @@ Both Temperature and Numeric use the same **condition-based evaluation grid** (`
 > - Whether Timer uses the same `numeric-type-grid-*` condition system
 > - Unique Timer settings (start/stop controls, elapsed time display)
 > - Example configurations (e.g., handwashing timer, cooling process timer)
-> - Playwright automation workflows for Timer
+> - Automation workflows for Timer

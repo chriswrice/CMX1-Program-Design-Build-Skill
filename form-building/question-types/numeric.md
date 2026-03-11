@@ -8,7 +8,7 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 
 ---
 
-> **IMPORTANT:** Numeric and Temperature share the same **condition-based evaluation grid** (`numeric-type-grid-*` selectors). For comprehensive documentation of the condition grid system, operators, compliance settings, and Playwright workflows, see **[temperature-timer.md](./temperature-timer.md)**.
+> **IMPORTANT:** Numeric and Temperature share the same **condition-based evaluation grid** (`numeric-type-grid-*` selectors). For comprehensive documentation of the condition grid system, operators, compliance settings, and automation workflows, see **[temperature-timer.md](./temperature-timer.md)**.
 >
 > The primary difference is the answer config data-cy attributes:
 > - Numeric: `[data-cy="answer-config-numeric"]` / `[data-cy="answer-config-detail-content-numeric"]`
@@ -19,4 +19,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - Numeric-specific Answer sub-panel settings (Controls, Allowed Inputs, Unit of Measurement, Field Labels, Decimals, Calculation Type)
 > - Any Numeric-specific operators or condition settings not present in Temperature
 > - Example configurations (e.g., count limits, measurement ranges)
-> - Playwright automation workflows specific to Numeric
+> - Automation workflows specific to Numeric

@@ -99,7 +99,7 @@ Clicking a Yes/No question block opens the **Question** panel on the right side.
 
 ---
 
-## Playwright Workflows
+## Automation Workflows
 
 ### Workflow: Create a Fully Configured Yes/No Question
 

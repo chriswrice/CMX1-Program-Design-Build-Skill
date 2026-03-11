@@ -14,4 +14,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - Unique settings compared to Yes/No
 > - Scoring and compliance mapping with 3+ answers
 > - Example configurations (e.g., Good/Fair/Poor audit scale)
-> - Playwright automation workflows
+> - Automation workflows

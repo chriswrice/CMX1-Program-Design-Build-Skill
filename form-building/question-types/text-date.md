@@ -14,4 +14,4 @@ For universal concepts (answer table, evaluation settings, observations, recomme
 > - DateTime question: combined date/time picker, timezone handling
 > - Whether these types support scoring/compliance or are data-only
 > - Example configurations
-> - Playwright automation workflows
+> - Automation workflows
