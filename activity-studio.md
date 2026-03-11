@@ -643,9 +643,9 @@ CMX1 login redirects to a branded login page ("Sign in to X1 Platform"). There a
 
 ### 🔧 UI Interaction Notes
 
-8. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel
-9. **Side panel only for**: Visibility conditions (Logic tab), and per-answer-item detail via gear icons
-10. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection
+8. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel. All answer settings should be set in the answer table in the main canvas.
+9. **Side panel only for**: Visibility conditions (Logic tab)
+10. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection or type, THEN HIT ENTER
 11. **Risk levels are org-configured**: The available risk levels vary by organization. Use the combobox to search/type
 12. **data-cy attributes**: Always prefer `[data-cy="..."]` selectors — they are stable test IDs
 13. **UUIDs are dynamic**: Answer row UUIDs change per question instance. Use relative selectors within grid rows
