@@ -91,21 +91,25 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 | `mcp__Claude_in_Chrome__read_console_messages` | Read browser console output |
 | `mcp__Claude_in_Chrome__read_network_requests` | Monitor network requests |
 
-### 🏆 CDP Scripts (For Bulk Form Building — PREFERRED for Speed & Tokens)
+### 🏆 Playwright CLI (For Bulk Form Building — PREFERRED for Speed & Tokens)
 
-> **This is the PREFERRED method for building forms.** CDP scripts use the Playwright library to connect to the user's browser via Chrome DevTools Protocol and use direct DOM selectors (`[data-cy="..."]`) — no screenshots, no vision model, no coordinate guessing. Each action is a single line of code that executes in milliseconds and costs almost zero tokens. These are standalone `.mjs` Node scripts, not MCP tools.
+> **This is the PREFERRED method for building forms.** Playwright CLI (`@playwright/cli`) lets Claude run browser commands directly — clicking, filling, snapshotting — using `data-cy` selectors without screenshots or vision models. Each command executes in milliseconds and costs almost zero tokens.
+>
+> **Source:** https://github.com/microsoft/playwright-cli — always fetch the latest README before installing or troubleshooting.
 
 **Strengths:**
-- ✅ Direct selector-based interactions — `page.locator('[data-cy="add-section-button"]').click()`
+- ✅ Direct selector-based interactions — `playwright-cli click '[data-cy="add-section-button"]'`
 - ✅ Saves massive tokens — no screenshot images to process
 - ✅ 10x faster — no screenshot → interpret → click cycle
 - ✅ Precise — selectors hit exact elements, no coordinate guessing
-- ✅ `waitForSelector` — reliably waits for DOM changes before proceeding
 - ✅ Batch operations — loop through 20 observations in seconds
-- ✅ Reusable — scripts are `.mjs` files that can run again on other templates
+- ✅ Snapshot/screenshot for verification without full vision pipeline
 - ✅ All CMX1 elements have `data-cy` attributes — built for this
+- ✅ Skills integration — `playwright-cli install --skills` registers with Claude Code
 
-**Requirement:** Must connect to user's existing browser via CDP (see setup below). **NEVER use `chromium.launch()`.**
+**Installation:** See **[form-design-strategy.md → Pre-Phase: Step 2](form-design-strategy.md)** for one-time setup. Requires Node.js 18+ and `npm install -g @playwright/cli@latest`.
+
+**Requirement:** Must connect to user's existing browser. **NEVER launch a new isolated browser.**
 
 **Prerequisites — Ask the User:**
 
@@ -643,9 +647,9 @@ CMX1 login redirects to a branded login page ("Sign in to X1 Platform"). There a
 
 ### 🔧 UI Interaction Notes
 
-8. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel. All answer settings should be set in the answer table in the main canvas.
-9. **Side panel only for**: Visibility conditions (Logic tab)
-10. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection or type, THEN HIT ENTER
+8. **Inline editing preferred**: Most values are set directly in the main canvas, not the side panel
+9. **Side panel only for**: Visibility conditions (Logic tab), and per-answer-item detail via gear icons
+10. **Custom dropdowns**: Compliance and Risk Level use custom components, not native `<select>`. Use click + text selection
 11. **Risk levels are org-configured**: The available risk levels vary by organization. Use the combobox to search/type
 12. **data-cy attributes**: Always prefer `[data-cy="..."]` selectors — they are stable test IDs
 13. **UUIDs are dynamic**: Answer row UUIDs change per question instance. Use relative selectors within grid rows
