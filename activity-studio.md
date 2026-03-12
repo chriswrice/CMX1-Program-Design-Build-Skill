@@ -91,33 +91,83 @@ When planning a new form with a user, output the plan as a **build spec** — a 
 | `mcp__Claude_in_Chrome__read_console_messages` | Read browser console output |
 | `mcp__Claude_in_Chrome__read_network_requests` | Monitor network requests |
 
-### 🏆 Playwright CLI (For Bulk Form Building — PREFERRED for Speed & Tokens)
+### 🏆 `playwright-cli` (Interactive Form Building — PREFERRED)
 
-> **This is the PREFERRED method for building forms.** Playwright CLI (`@playwright/cli`) lets Claude run browser commands directly — clicking, filling, snapshotting — using `data-cy` selectors without screenshots or vision models. Each command executes in milliseconds and costs almost zero tokens.
+> **This is the PREFERRED method for building forms.** `playwright-cli` (`@playwright/cli`) lets Claude run browser commands directly from the terminal — clicking, filling, snapshotting — using element refs from accessibility snapshots. No screenshots, no vision model, no coordinate guessing. Each command executes in milliseconds and costs almost zero tokens.
 >
 > **Source:** https://github.com/microsoft/playwright-cli — always fetch the latest README before installing or troubleshooting.
 
 **Strengths:**
-- ✅ Direct selector-based interactions — `playwright-cli click '[data-cy="add-section-button"]'`
-- ✅ Saves massive tokens — no screenshot images to process
+- ✅ Snapshot-based refs (`e1`, `e15`) — no screenshots needed, no vision model
+- ✅ Direct CLI commands — `playwright-cli click e3`, `playwright-cli fill e5 "text"`
+- ✅ Self-healing — if a ref fails, re-snapshot and find the right element
+- ✅ Saves massive tokens — no screenshot images in context
 - ✅ 10x faster — no screenshot → interpret → click cycle
-- ✅ Precise — selectors hit exact elements, no coordinate guessing
-- ✅ Batch operations — loop through 20 observations in seconds
-- ✅ Snapshot/screenshot for verification without full vision pipeline
-- ✅ All CMX1 elements have `data-cy` attributes — built for this
+- ✅ Session management — named sessions with `-s=cmx1`
+- ✅ Auth persistence — `state-save` / `state-load` for login sessions
 - ✅ Skills integration — `playwright-cli install --skills` registers with Claude Code
+- ✅ All CMX1 elements have `data-cy` attributes — built for this
 
 **Installation:** See **[form-design-strategy.md → Pre-Phase: Step 2](form-design-strategy.md)** for one-time setup. Requires Node.js 18+ and `npm install -g @playwright/cli@latest`.
 
-**Requirement:** Must connect to user's existing browser. **NEVER launch a new isolated browser.**
+**Getting Started — `playwright-cli` Workflow:**
+
+```bash
+# 1. Open browser (launches Playwright's managed Chromium)
+playwright-cli open
+
+# 2. Navigate to the template
+playwright-cli goto "https://restaurant-demo.cmx1.com/a/activitystudio/{template-id}/details"
+
+# 3. Take a snapshot — returns element refs (e1, e5, e15, etc.)
+playwright-cli snapshot
+
+# 4. Interact using refs from the snapshot
+playwright-cli click e15                    # Click an element
+playwright-cli fill e7 "Question text"      # Fill an input
+playwright-cli click '[data-cy="add-section-button"]'  # Or use CSS selectors directly
+
+# 5. Re-snapshot to verify changes and get updated refs
+playwright-cli snapshot
+
+# 6. Close when done
+playwright-cli close
+```
+
+**Session persistence:** Use `playwright-cli -s=cmx1 open` to name the session. All subsequent commands in that session: `playwright-cli -s=cmx1 snapshot`, etc.
+
+**Auth persistence:** After logging into CMX1, save the session:
+```bash
+playwright-cli state-save cmx1-auth.json
+```
+In future sessions, load it to skip login:
+```bash
+playwright-cli state-load cmx1-auth.json
+playwright-cli goto "https://restaurant-demo.cmx1.com/a/activitystudio/..."
+```
 
 **Prerequisites — Ask the User:**
 
-1. **Which browser?** (Chrome recommended, Edge, Brave work too. Safari/Firefox ⚠️ not supported for CDP.)
-2. **Which profile?** (e.g., "Default", "Work", "Personal")
-3. **Is CMX1 already open?** (must be logged in)
+1. **Which CMX1 site?** (e.g., `restaurant-demo.cmx1.com`)
+2. **Do you have login credentials?** (for auth persistence — can use Google SSO or manual login)
 
-**Setup — User Must Restart Browser with CDP Flag:**
+### CDP Scripts (Batch Automation — for Reusable `.mjs` Scripts)
+
+For pre-written batch automation that runs the same build steps repeatedly, use CDP scripts. These are standalone Node.js `.mjs` files that use the `playwright` npm library directly.
+
+**When to use CDP scripts instead of `playwright-cli`:**
+- Running a tested, pre-written build sequence that doesn't need adaptation
+- Executing the same automation on multiple templates
+- Maximum speed with no per-step overhead
+
+**Key differences from `playwright-cli`:**
+- Uses `import { chromium } from 'playwright'` (the npm library, not the CLI)
+- Must run from `~/playwright-workspace/` (or any directory with `playwright` installed as a local dependency — global installs don't resolve for ESM imports)
+- Connects to user's Chrome via CDP (`chromium.connectOverCDP('http://localhost:9222')`)
+- Requires Chrome to be launched with `--remote-debugging-port=9222`
+- See `playwright/build-ccp-section1.mjs` for a working example
+
+**Setup — User Must Restart Chrome with CDP Flag (CDP Scripts Only):**
 
 ```bash
 # macOS — Google Chrome:
@@ -128,24 +178,15 @@ When planning a new form with a user, output the plan as a **build spec** — a 
   --remote-debugging-port=9222 \
   --profile-directory="Profile 1"
 
-# macOS — Microsoft Edge:
-/Applications/Microsoft\ Edge.app/Contents/MacOS/Microsoft\ Edge --remote-debugging-port=9222
-
-# macOS — Brave:
-/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser --remote-debugging-port=9222
-
 # Windows — Google Chrome:
 "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
-
-# Linux:
-google-chrome --remote-debugging-port=9222
 ```
 
 > **Important:** Chrome must be FULLY quit before relaunching with the flag. If any Chrome window is still open, the new instance joins the existing process (without CDP) and the flag is ignored.
 
 **Verify CDP:** `curl -s http://localhost:9222/json/version`
 
-**Connect Playwright:**
+**Connect in a CDP script:**
 
 ```javascript
 import { chromium } from 'playwright';
@@ -159,15 +200,17 @@ const page = contexts[0].pages().find(p => p.url().includes('cmx1.com')) || cont
 // const browser = await chromium.launch({ headless: false });
 ```
 
-### Troubleshooting (Playwright CDP Only)
+### Troubleshooting
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| CDP endpoint not responding | Chrome wasn't launched with `--remote-debugging-port` | Fully quit Chrome and relaunch with the flag |
-| "Target closed" errors | User closed the tab Playwright was connected to | Re-find the page from `context.pages()` |
-| Wrong profile | CDP connects to whichever Chrome process has the port | Use `--profile-directory` flag when launching |
-| Multiple Chrome instances | Only one process can bind to port 9222 | Ensure all Chrome instances are quit before relaunching |
-| Chrome keeps relaunching | Agent keeps killing/relaunching Chrome in a loop | **STOP.** Use Claude in Chrome instead — it just works |
+| Problem | Applies To | Cause | Fix |
+|---------|-----------|-------|-----|
+| `playwright-cli` command not found | CLI | Not installed globally | `npm install -g @playwright/cli@latest` |
+| No Chromium browser available | Both | Browser binary not downloaded | `cd ~/playwright-workspace && npx playwright install chromium` |
+| CDP endpoint not responding | CDP Scripts | Chrome wasn't launched with `--remote-debugging-port` | Fully quit Chrome and relaunch with the flag |
+| `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'` | CDP Scripts | Running script from wrong directory | Run from `~/playwright-workspace/` or install playwright locally in that project |
+| "Target closed" errors | CDP Scripts | User closed the tab Playwright was connected to | Re-find the page from `context.pages()` |
+| Wrong profile | CDP Scripts | CDP connects to whichever Chrome process has the port | Use `--profile-directory` flag when launching |
+| Chrome keeps relaunching | Both | Agent keeps killing/relaunching Chrome in a loop | **STOP.** Use Claude in Chrome instead — it just works |
 
 ---
 

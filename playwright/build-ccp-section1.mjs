@@ -1,5 +1,12 @@
 /**
- * CMX1 Activity Studio — Playwright Builder Script (CDP Mode)
+ * CMX1 Activity Studio — CDP Script (Batch Automation)
+ *
+ * NOTE: This is a CDP Script — it uses the `playwright` npm library directly.
+ * It must be run from a directory with `playwright` installed as a local dependency
+ * (e.g., ~/playwright-workspace/). Global npm installs do NOT resolve for ESM imports.
+ *
+ * For interactive form building, prefer `playwright-cli` commands instead.
+ * See activity-studio.md for the recommended workflow.
  *
  * Connects to the user's EXISTING Chrome browser via Chrome DevTools Protocol.
  * Builds CCP Checklist Section 1 (Receiving) using skill file patterns.
@@ -8,8 +15,9 @@
  *   1. Chrome must be running with: --remote-debugging-port=9222
  *   2. User must be logged into CMX1 in that browser
  *   3. The CCP Checklist template should be open in Activity Studio
+ *   4. Run from ~/playwright-workspace/ (or any dir with playwright installed locally)
  *
- * Usage: node build-ccp-section1.mjs
+ * Usage: cd ~/playwright-workspace && node /path/to/build-ccp-section1.mjs
  */
 
 import { chromium } from 'playwright';

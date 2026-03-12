@@ -1,7 +1,33 @@
-# Yes/No Question — Playwright CDP Build Recipe
+# Yes/No Question — Build Recipe
 
 > **Universal concepts** (answer table, evaluation toggles, logic rules): see [shared-concepts.md](../shared-concepts.md)
-> **Assumes:** You have a connected `page` object via CDP. See `playwright/build-ccp-section1.mjs` for connection boilerplate.
+> **Two build methods:** This recipe shows CDP script code (raw Playwright API). For interactive agent building, use `playwright-cli` commands — see the Quick Reference below.
+
+---
+
+## `playwright-cli` Quick Reference (Interactive Building)
+
+For agent-driven interactive building, these CLI commands map to the CDP code in the recipes below. Use `playwright-cli snapshot` between steps to get updated element refs.
+
+| Recipe Step | `playwright-cli` Command |
+|-------------|-------------------------|
+| Add question zone | `playwright-cli click '[data-cy="add-question-zone-0"]'` |
+| Select Yes/No type | `playwright-cli snapshot` → find "Yes / No" ref → `playwright-cli click eN` |
+| Enter question text | `playwright-cli fill '[data-cy="question-text-input"]' "Question text here"` |
+| Enter instructions | `playwright-cli snapshot` → find instructions placeholder ref → `playwright-cli click eN` → `playwright-cli type "Instructions text"` |
+| Expand answer table | `playwright-cli click '[data-cy="toggle-answer-config"]'` |
+| Set points (Yes row) | `playwright-cli snapshot` → find points input ref → `playwright-cli fill eN "4"` |
+| Set points available | `playwright-cli fill eN "4"` (next input ref from snapshot) |
+| Set compliance | `playwright-cli snapshot` → find compliance cell ref → `playwright-cli click eN` → `playwright-cli snapshot` → click "In" or "Out" ref |
+| Set risk level | `playwright-cli fill '[data-cy^="answer-type-grid-risk-"] input' "High"` → `playwright-cli press Enter` |
+| Toggle CA on | `playwright-cli snapshot` → find CA toggle ref → `playwright-cli click eN` |
+| Enable Observations | `playwright-cli snapshot` → find Observations toggle ref → `playwright-cli click eN` |
+| Click "Create Manually" | `playwright-cli snapshot` → find ref → `playwright-cli click eN` |
+| Add reason item | `playwright-cli fill 'input[placeholder="Start typing to add more..."]' "Reason text"` → `playwright-cli press Enter` |
+| Open logic panel | `playwright-cli click '[data-cy="logic-visual-indicator"]'` |
+| Set logic dropdown | `playwright-cli snapshot` → find listbox button ref → `playwright-cli click eN` → `playwright-cli snapshot` → click option ref |
+
+> **Key difference:** With `playwright-cli`, use `snapshot` to get element refs, then interact using those refs. With CDP scripts, use selectors directly in code. `playwright-cli` is adaptive (re-snapshot if something fails); CDP scripts are faster for batch operations.
 
 ---
 

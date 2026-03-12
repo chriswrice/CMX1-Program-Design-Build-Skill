@@ -57,6 +57,24 @@ Look for the config file at: `cmx1-activity-studio-skills/user-environment.md`
    ```
    Should display available commands (open, click, fill, snapshot, screenshot, etc.)
 
+6. **Install Chromium browser** (required for both `playwright-cli` and CDP scripts):
+   ```bash
+   # Create a workspace for CDP scripts (global npm installs don't resolve for ESM imports)
+   mkdir -p ~/playwright-workspace && cd ~/playwright-workspace && npm init -y && npm install playwright
+   # Download Chromium browser binary
+   cd ~/playwright-workspace && npx playwright install chromium
+   ```
+   This downloads Chromium to `~/Library/Caches/ms-playwright/` — shared by both `playwright-cli` and CDP scripts.
+
+7. **Verify both tools work:**
+   ```bash
+   # CLI tool (interactive agent commands)
+   playwright-cli --help
+
+   # Library (for .mjs batch scripts)
+   cd ~/playwright-workspace && node -e "import('playwright').then(m => { console.log('✅ playwright library OK'); })"
+   ```
+
 **If npm/node is not available:** Help the user install Node.js first. On macOS: `brew install node`. On other platforms, direct them to https://nodejs.org.
 
 #### Step 3: Gather Environment Info (First Time Only)
@@ -96,6 +114,11 @@ Write the config to `cmx1-activity-studio-skills/user-environment.md`:
 - **Skills installed:** yes
 - **Install command used:** `npm install -g @playwright/cli@latest`
 
+## Playwright Library (for CDP Scripts)
+- **Workspace:** ~/playwright-workspace/
+- **Version:** {output of `cd ~/playwright-workspace && node -e "import('playwright').then(m => console.log(m.chromium.name()))"`}
+- **Chromium:** downloaded to ~/Library/Caches/ms-playwright/
+
 ## Chrome Profile
 - **Profile directory:** Profile 5
 - **Profile name:** Meagan
@@ -118,7 +141,10 @@ Run these checks silently (don't ask the user — just verify and report any iss
 | Check | How | If Failing |
 |-------|-----|------------|
 | **Playwright CLI installed** | `playwright-cli --help` | Run Step 2 installation |
+| **Playwright CLI skills** | Check `.claude/skills/playwright-cli/skill.md` exists | `playwright-cli install --skills` |
 | **Node.js 18+** | `node --version` | `brew install node` or https://nodejs.org |
+| **Chromium browser downloaded** | `ls ~/Library/Caches/ms-playwright/chromium-*` | `cd ~/playwright-workspace && npx playwright install chromium` |
+| **CDP scripts workspace** | `ls ~/playwright-workspace/node_modules/playwright` | `mkdir -p ~/playwright-workspace && cd ~/playwright-workspace && npm init -y && npm install playwright` |
 | **Claude in Chrome connected** | Call `tabs_context_mcp` | Tell user to open Chrome with their profile and click "Connect" in the Claude in Chrome extension |
 | **Correct Chrome profile running** | Take a screenshot or check the tab URLs — does it match the user's expected profile/sites? | User needs to close Chrome and relaunch with the right profile |
 | **CMX1 logged in** | Navigate to the user's CMX1 site URL and check if it loads (not a login page) | Tell user to log in first |
@@ -394,15 +420,33 @@ Navigate the 2-step creation wizard using values from `settings.md`:
 
 #### Phase 3: Form Scaffolding (Opus)
 
-Create the structural foundation and establish patterns the bulk agent will follow:
+Create the structural foundation and establish patterns the bulk agent will follow.
 
+**Primary tool: `playwright-cli`** — The agent runs `snapshot` → `click`/`fill` loops interactively, adapting in real-time if selectors fail. This is preferred over CDP scripts because it's self-healing: if a snapshot ref is wrong, the agent re-snapshots and finds the right element.
+
+**Workflow:**
+```bash
+# 1. Open browser and navigate to the template
+playwright-cli open
+playwright-cli goto "https://{site}.cmx1.com/a/activitystudio/{template-id}/details"
+
+# 2. Take a snapshot to see the page structure
+playwright-cli snapshot
+
+# 3. Interact using element refs from the snapshot
+playwright-cli click e15        # Click a section
+playwright-cli fill e7 "text"   # Fill an input
+playwright-cli snapshot          # Re-snapshot to verify and get new refs
+```
+
+**Steps:**
 1. **Create all sections and subsections** per `form-layout.md`
 2. **Build one example question for each unique answer profile** end-to-end:
    - Create the question with the correct type
    - Configure the full answer table (points, compliance, risk, CA)
    - Set up observations and recommendations from `scoring-compliance.md`
    - Configure visibility/requirement rules
-   - Verify it looks correct via screenshot
+   - Verify it looks correct via `playwright-cli snapshot` or `playwright-cli screenshot`
 
 **Example questions to build (one per unique variation):**
 
@@ -423,28 +467,35 @@ Create the structural foundation and establish patterns the bulk agent will foll
 
 #### Phase 4: Bulk Question Build (Haiku Sub-Agent)
 
-Opus launches a Haiku sub-agent to build the remaining questions. The sub-agent receives:
+Opus launches a Haiku sub-agent to build the remaining questions.
+
+**Primary tool: `playwright-cli`** — Sub-agents use `playwright-cli` commands via Bash. For each question: `snapshot` → identify refs → `click`/`fill` sequence following the recipe from the relevant question type file (e.g., `yes-no.md`). `playwright-cli` is preferred for sub-agents because it's self-healing — if a snapshot ref changes, the agent re-snapshots and adapts.
+
+**Alternative:** For maximum speed on well-tested builds, run pre-written CDP `.mjs` scripts from `~/playwright-workspace/`. CDP scripts are rigid (break if selectors change) but faster for batch operations with no decision-making.
 
 **Context to include in the sub-agent prompt:**
 - Path to all three build spec files
 - List of questions already built by Opus (the example questions above)
 - List of remaining questions to build
 - Instructions to follow the established patterns section by section
-- Reference to the relevant question type skill files for UI interaction steps
+- Reference to the relevant question type skill files for `playwright-cli` command sequences
+- The `playwright-cli` session name to reuse (e.g., `-s=cmx1`)
 
 **Sub-agent workflow:**
 1. Read `form-layout.md` for the full question list
 2. For each remaining question:
-   - Identify which section it belongs to
-   - Create the question with the correct type
+   - `playwright-cli snapshot` to see current page state
+   - Identify which section it belongs to, navigate if needed
+   - Create the question with the correct type using `click`/`fill` commands
    - Configure answer table using the inline Pass/Fail/CA values from the spec
    - Add observations and recommendations per the Profile reference in `scoring-compliance.md`
    - Apply visibility rules if applicable (gated sections)
+   - `playwright-cli snapshot` to verify before moving on
 3. Work section by section in order
 
 **What Haiku handles well here:**
 - Following a clear, explicit spec (the enhanced `form-layout.md` tables)
-- Repetitive UI interactions (same pattern, different values)
+- Repetitive `playwright-cli` command sequences (same pattern, different values)
 - High-volume question creation without context fatigue
 
 **What Haiku should NOT do:**
