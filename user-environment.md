@@ -13,9 +13,9 @@
 - **Chromium:** v1208 (Chrome for Testing 145.0.7632.6) at ~/Library/Caches/ms-playwright/chromium-1208
 
 ## Chrome Profile
-- **Profile directory:** (to be confirmed with user)
-- **Profile name:** (to be confirmed with user)
-- **Launch command:** (to be set after profile confirmed)
+- **Profile directory:** Profile 19
+- **Profile name:** Chris Work
+- **Launch command:** `/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --profile-directory="Profile 19"`
 
 ## CMX1 Sites
 - **Primary:** https://restaurant-demo.cmx1.com
